@@ -60,6 +60,7 @@ add_library(lsm STATIC
   src/env/mem_env.cc
   src/db/dbformat.cc
   src/db/filename.cc
+  src/memtable/memtable.cc
 )
 target_include_directories(lsm
   PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}/include

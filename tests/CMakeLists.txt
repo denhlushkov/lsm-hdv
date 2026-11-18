@@ -17,6 +17,8 @@ include(GoogleTest)
 set(LSM_UNIT_TESTS
   util_test.cc
   env_test.cc
+  arena_skiplist_test.cc
+  memtable_test.cc
 )
 
 add_executable(lsm_tests ${LSM_UNIT_TESTS})
