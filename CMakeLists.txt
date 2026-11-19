@@ -61,6 +61,9 @@ add_library(lsm STATIC
   src/db/dbformat.cc
   src/db/filename.cc
   src/memtable/memtable.cc
+  src/wal/log_writer.cc
+  src/wal/log_reader.cc
+  src/wal/wal_replay.cc
 )
 target_include_directories(lsm
   PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}/include
