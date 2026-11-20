@@ -20,6 +20,8 @@ set(LSM_UNIT_TESTS
   arena_skiplist_test.cc
   memtable_test.cc
   wal_test.cc
+  bloom_filter_test.cc
+  lru_cache_test.cc
 )
 
 add_executable(lsm_tests ${LSM_UNIT_TESTS})

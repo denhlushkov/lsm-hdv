@@ -64,6 +64,8 @@ add_library(lsm STATIC
   src/wal/log_writer.cc
   src/wal/log_reader.cc
   src/wal/wal_replay.cc
+  src/filter/bloom_filter.cc
+  src/cache/lru_cache.cc
 )
 target_include_directories(lsm
   PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}/include
