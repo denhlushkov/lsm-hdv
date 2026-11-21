@@ -22,6 +22,8 @@ set(LSM_UNIT_TESTS
   wal_test.cc
   bloom_filter_test.cc
   lru_cache_test.cc
+  block_test.cc
+  table_test.cc
 )
 
 add_executable(lsm_tests ${LSM_UNIT_TESTS})

@@ -66,6 +66,11 @@ add_library(lsm STATIC
   src/wal/wal_replay.cc
   src/filter/bloom_filter.cc
   src/cache/lru_cache.cc
+  src/sstable/format.cc
+  src/sstable/block_builder.cc
+  src/sstable/block.cc
+  src/sstable/table_builder.cc
+  src/sstable/table.cc
 )
 target_include_directories(lsm
   PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}/include
