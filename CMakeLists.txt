@@ -60,6 +60,7 @@ add_library(lsm STATIC
   src/env/mem_env.cc
   src/db/dbformat.cc
   src/db/filename.cc
+  src/db/builder.cc
   src/memtable/memtable.cc
   src/wal/log_writer.cc
   src/wal/log_reader.cc

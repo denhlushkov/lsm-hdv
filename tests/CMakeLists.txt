@@ -24,6 +24,7 @@ set(LSM_UNIT_TESTS
   lru_cache_test.cc
   block_test.cc
   table_test.cc
+  builder_test.cc
 )
 
 add_executable(lsm_tests ${LSM_UNIT_TESTS})
