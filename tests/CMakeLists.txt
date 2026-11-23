@@ -29,7 +29,9 @@ set(LSM_UNIT_TESTS
 
 add_executable(lsm_tests ${LSM_UNIT_TESTS})
 target_link_libraries(lsm_tests PRIVATE lsm_internal lsm_compile_options GTest::gtest_main)
-gtest_discover_tests(lsm_tests DISCOVERY_TIMEOUT 60)
+# PRE_TEST: list the tests when ctest runs, not as a post-build step, so the
+# build never executes (possibly sanitizer-instrumented) test binaries.
+gtest_discover_tests(lsm_tests DISCOVERY_TIMEOUT 60 DISCOVERY_MODE PRE_TEST)
 
 if(LSM_WITH_RAPIDCHECK)
   FetchContent_Declare(rapidcheck
@@ -43,5 +45,6 @@ if(LSM_WITH_RAPIDCHECK)
   add_executable(lsm_property_tests property_test.cc)
   target_link_libraries(lsm_property_tests PRIVATE
     lsm_internal lsm_compile_options rapidcheck rapidcheck_gtest GTest::gtest_main)
-  gtest_discover_tests(lsm_property_tests DISCOVERY_TIMEOUT 60)
+  gtest_discover_tests(lsm_property_tests DISCOVERY_TIMEOUT 60
+                       DISCOVERY_MODE PRE_TEST)
 endif()

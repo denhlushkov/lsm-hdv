@@ -42,7 +42,14 @@ jobs:
       - name: Build
         run: cmake --build build --parallel
       - name: Test
-        run: ctest --test-dir build --output-on-failure --parallel 4
+        run: |
+          if [ -n "${{ matrix.sanitize }}" ]; then
+            # Sanitizer runtimes reject the runner's high-entropy ASLR
+            # ("unexpected memory mapping"); run with randomization off.
+            setarch "$(uname -m)" -R ctest --test-dir build --output-on-failure --parallel 4
+          else
+            ctest --test-dir build --output-on-failure --parallel 4
+          fi
 
   windows-mingw:
     runs-on: windows-latest
