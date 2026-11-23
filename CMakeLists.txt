@@ -42,6 +42,12 @@ else()
   endif()
 endif()
 
+if(MINGW)
+  # Link libstdc++/libgcc/winpthread statically so executables run without
+  # the MinGW runtime DLLs on PATH.
+  add_link_options(-static)
+endif()
+
 find_package(Threads REQUIRED)
 
 # ---------------------------------------------------------------------------
