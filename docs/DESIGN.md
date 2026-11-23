@@ -334,3 +334,53 @@ M0: Каркас проєкту & CI
 - **M3**: Реалізація `Compaction Engine` (K-way merge), публічний API `Scan`/`Put`/`Get`/`Delete`, диференційні тести проти `std::map`, багатопотокові стрес-тести під TSan.
 - **M4**: Інтеграція фазингу libFuzzer та підрахунок чистого коду ядра (гейт ≥ 3 500 рядків).
 - **M5**: Прогін мутаційного тестування Mull, дотискання тестів до Mutation Score ≥ 80%, фінальний звіт і підготовка до захисту.
+
+---
+
+## 9. Стан реалізації (Implementation Status)
+
+> Розділ додано під час реалізації; розділи 1–8 вище відповідають оригінальному документу.
+
+### 9.1. Виконані етапи: M0, M1, M2
+
+| Етап | Що реалізовано | Код |
+|---|---|---|
+| M0 | CMake/CTest, Google Test, RapidCheck, опція `LSM_SANITIZE` (ASan/UBSan/TSan), CI на GitHub Actions | `CMakeLists.txt`, `tests/CMakeLists.txt`, `.github/workflows/ci.yml` |
+| M1 | Arena, конкурентний SkipList (*p* = 1/4, MaxLevel = 16, двонаправлений ітератор), MemTable з tombstone-ами та політикою flush, WAL writer/reader, Crash Replay | `src/util/`, `src/memtable/`, `src/wal/` |
+| M2 | Delta/Varint блоки з restart points, SSTable builder/reader, Bloom filter (Murmur3 + Kirsch-Mitzenmacher), шардований LRU block cache, flush MemTable → L0 SSTable | `src/sstable/`, `src/filter/`, `src/cache/`, `src/db/builder.*` |
+| (L5) | Абстракція файлової системи `Env` (реальна ФС + in-memory) для fault injection | `include/lsm/env.h`, `src/env/` |
+
+Не реалізовано (наступні етапи): Compaction Engine і K-way merge (M3), `StorageEngine`/`DBImpl` з фоновими потоками (M3), libFuzzer-цілі (M4), Mull (M5), бенчмарки (L8).
+
+### 9.2. Уточнення бінарних форматів
+
+Оригінальний документ залишає кілька деталей відкритими; реалізація фіксує їх так:
+
+- **Внутрішній ключ.** MemTable і SSTable зберігають `user_key | fixed64(seq << 8 | type)`, де `type` збігається з байтом типу WAL (`0x01` PUT, `0x02` DELETE). Порядок: user key за зростанням, потім sequence за спаданням — найновіша версія знаходиться першою. Bloom filter будується за user key.
+- **Трейлер блоку.** Кожен блок SSTable (data, filter, index) супроводжується 4-байтовим CRC32 вмісту. Це дозволяє повертати `Status::Corruption` до розбору пошкодженого блоку (F-01).
+- **Footer (48 байтів).** Чотири поля `uint64` з розділу 4.3 (32 байти) + `uint32` версії формату (`1`) + `uint32` CRC32 перших 36 байтів + 8 байтів magic `0xDB47534D5F4B5631`. Filter handle з розміром 0 означає відсутність фільтра.
+- **Index Block.** Ключ запису — найбільший ключ data-блоку; значення — `varint64 offset | varint64 size`. Restart interval індексу = 1.
+- **Data Block.** Запис: `varint32 shared | varint32 non_shared | varint32 value_len | key_delta | value`; restart interval за замовчуванням 16 (`Options::block_restart_interval`); блок закінчується масивом `fixed32` restart-зміщень і їх кількістю.
+- **Bloom filter.** Бітовий масив (мінімум 64 біти) + 1 байт *k*; *k* = round(bits_per_key · ln 2), обмежено [1, 30]. Невідоме *k* трактується як «можливо присутній».
+- **WAL Replay.** Запис, обрізаний кінцем файлу (torn write), коректно завершує журнал (`tail_truncated`, статус OK). Помилка CRC, невідомий тип або неправдоподібна довжина (> 64 МБ) дають `Status::Corruption`. В обох випадках усі попередні записи застосовано. Номери послідовності призначаються під час replay послідовно.
+- **Flush.** Таблиця пишеться у `NNNNNN.tmp`, синхронізується, перевіряється повторним відкриттям і лише потім перейменовується у `NNNNNN.sst`. При помилці (ENOSPC, EIO) тимчасовий файл видаляється, а MemTable залишається недоторканою (FI-02).
+
+### 9.3. Відповідність тестів каталогу 6.2
+
+| ID | Тест(и) |
+|---|---|
+| U-01 | `SkipListTest.InsertAndLookup100kRandomKeys`, `BackwardIteration`, `HeightDistributionIsGeometric` |
+| U-02 | `BloomFilterTest.NoFalseNegativesAndLowFalsePositiveRate` |
+| U-03 | `LRUCacheTest.EvictsLeastRecentlyUsed`, `LookupRefreshesRecency` |
+| U-04 | `TableTest.FooterLayoutAndMagicNumber`, `BlockTest.*` |
+| U-05 | `WalTest.DetectsCorruptedByteInEveryPosition`, `Crc32Test.*` |
+| P-01 | `BlockProperty.P01_EncodeDecodeRoundTrip` |
+| P-02 | `MemTableProperty.P02_ReadAfterDelete` |
+| P-03 | `IteratorProperty.P03_StrictlyIncreasingKeys` |
+| D-01 (рівень MemTable) | `MemTableTest.RandomOperationsMatchStdMap` |
+| F-01 (без libFuzzer) | `TableTest.RandomCorruptionNeverCrashes`, `BlockTest.CorruptedEntriesYieldCorruptionNotCrash` |
+| F-02 (без libFuzzer) | `WalTest.RandomDamageNeverCrashes` |
+| FI-01 | `WalTest.TornWriteRecoversEveryCompleteRecord` |
+| FI-02 | `BuilderTest.DiskFullDuringFlushReportsErrorAndKeepsData` |
+| S-01/S-03 | повний набір під `-DLSM_SANITIZE=address,undefined` (CI) |
+| S-02 (рівень SkipList/кешу/SSTable) | `SkipListTest.ConcurrentReadersWithSingleWriter`, `LRUCacheTest.ShardedCacheUnderConcurrentAccess`, `TableTest.IteratorKeepsTableAliveAndConcurrentReadsWork` під TSan (CI) |
