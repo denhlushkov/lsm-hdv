@@ -31,3 +31,17 @@ add_executable(lsm_tests ${LSM_UNIT_TESTS})
 target_link_libraries(lsm_tests PRIVATE lsm_internal lsm_compile_options GTest::gtest_main)
 gtest_discover_tests(lsm_tests DISCOVERY_TIMEOUT 60)
 
+if(LSM_WITH_RAPIDCHECK)
+  FetchContent_Declare(rapidcheck
+    GIT_REPOSITORY https://github.com/emil-e/rapidcheck.git
+    GIT_TAG        2c3c4365aca21ef4e612768fdc95b1ce8b39a651)
+  set(RC_ENABLE_GTEST ON CACHE BOOL "" FORCE)
+  set(RC_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
+  set(RC_ENABLE_EXAMPLES OFF CACHE BOOL "" FORCE)
+  FetchContent_MakeAvailable(rapidcheck)
+
+  add_executable(lsm_property_tests property_test.cc)
+  target_link_libraries(lsm_property_tests PRIVATE
+    lsm_internal lsm_compile_options rapidcheck rapidcheck_gtest GTest::gtest_main)
+  gtest_discover_tests(lsm_property_tests DISCOVERY_TIMEOUT 60)
+endif()
